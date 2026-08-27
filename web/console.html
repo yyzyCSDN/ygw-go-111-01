@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>站台屏蔽门控制台</title>
+<style>
+body { font-family: "Microsoft YaHei", sans-serif; margin: 24px; background: #f4f6f8; }
+h1 { font-size: 20px; }
+.panel { background: #fff; border: 1px solid #d8dee6; border-radius: 6px; padding: 16px; margin-bottom: 16px; }
+.door { display: inline-block; width: 150px; margin: 6px; padding: 10px; border: 1px solid #c8d0da; border-radius: 6px; background: #eef3f7; }
+.door .state { font-weight: bold; }
+.door.closed { border-color: #2e9e5b; }
+.door.open { border-color: #e0a020; }
+.door.stopped { border-color: #c0392b; }
+.door.offline { opacity: 0.55; }
+button { padding: 6px 14px; }
+</style>
+</head>
+<body>
+<h1>站台屏蔽门控制台</h1>
+<div class="panel">
+<button onclick="refresh()">立即刷新</button>
+<span id="latest"></span>
+</div>
+<div class="panel" id="doors"></div>
+<div class="panel">
+<h2>告警</h2>
+<div id="alarms"></div>
+</div>
+<script>
+async function refresh() {
+  try {
+    const res = await fetch('/api/snapshot');
+    const snap = await res.json();
+    const box = document.getElementById('doors');
+    box.innerHTML = '';
+    for (const d of snap.doors) {
+      const row = document.createElement('div');
+      row.className = 'door ' + d.state + (d.online ? '' : ' offline');
+      const state = document.createElement('div');
+      state.className = 'state';
+      state.textContent = d.id + ' ' + d.state;
+      row.appendChild(state);
+      const meta = document.createElement('div');
+      const flags = [];
+      if (d.locked) flags.push('锁紧');
+      if (d.local) flags.push('就地');
+      if (d.obstacle) flags.push('防夹');
+      if (!d.online) flags.push('离线');
+      meta.textContent = flags.join(' ');
+      row.appendChild(meta);
+      box.appendChild(row);
+    }
+    const alarmBox = document.getElementById('alarms');
+    alarmBox.innerHTML = '';
+    for (const a of snap.alarms) {
+      const line = document.createElement('div');
+      line.textContent = a.doorID + ' ' + a.kind + ' ' + a.level;
+      alarmBox.appendChild(line);
+    }
+    document.getElementById('latest').textContent = '最新事件序号 ' + snap.latest;
+  } catch (err) {
+    document.getElementById('doors').textContent = '控制台不可达';
+  }
+}
+setInterval(refresh, 2000);
+refresh();
+</script>
+</body>
+</html>

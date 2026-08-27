@@ -1,0 +1,13 @@
+.git
+.verification-cache
+cases
+workspaces
+evidence
+private_oracles
+runner
+staging
+verify-workspaces
+node_modules
+*.json
+!go.mod
+!go.sum
