@@ -108,16 +108,30 @@ func (s *Service) OpenDoor(doorID string, trainID string) error {
 	if !ok {
 		return ErrTrainNotFound
 	}
-	res := s.deps.Interlock.Check(d.View(), t.Snapshot())
+	// Acquire the grant atomically with the interlock check. Two trains
+	// requesting the same door near-simultaneously cannot both succeed: the
+	// second is rejected with "door busy" and the first train's grant is never
+	// overwritten. This prevents a later train's request from clobbering an
+	// already-released (open) door's grant, which previously made the door
+	// flicker between open and closed on the console.
+	grant, res := s.deps.Interlock.AcquireGrant(d.View(), t.Snapshot(), s.nextSeq())
 	if !res.Allowed {
 		return errors.New(res.Reason)
 	}
-	grant := s.deps.Interlock.GrantDoor(doorID, trainID, s.nextSeq())
+	if err := d.ApplyGrant(grant); err != nil {
+		// The door could not transition to opening (e.g. it was opened by
+		// another flow between our check and here). Roll the grant back so the
+		// door is not left recorded as granted to a train that did not take it,
+		// and so a later request is not blocked by a stale grant.
+		s.deps.Interlock.ReleaseDoor(doorID)
+		return err
+	}
+	// Only publish the grant event once the door state has actually advanced
+	// to opening. Publishing before ApplyGrant caused the console/event stream
+	// to show the door as released (open) and then snap back to closed when the
+	// apply failed, i.e. the "放行又变回关闭" flicker.
 	if s.deps.Bus != nil {
 		s.deps.Bus.Publish(event.Event{DoorID: doorID, Type: event.TypeGrant, Detail: trainID})
-	}
-	if err := d.ApplyGrant(grant); err != nil {
-		return err
 	}
 	s.logCommand("open", doorID, trainID)
 	return nil
