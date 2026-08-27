@@ -31,7 +31,9 @@ func OpenTimeoutFor(cfg Config) time.Duration {
 	if cfg.OpenTimeout > 0 {
 		return cfg.OpenTimeout
 	}
-	return 3 * time.Second
+	// 一趟正常开门需要 6 秒，未配置时按内置默认值算，
+	// 保证门未到位之前不会把这次开门判成超时。
+	return DefaultOpenTimeout
 }
 
 func CloseTimeoutFor(cfg Config) time.Duration {

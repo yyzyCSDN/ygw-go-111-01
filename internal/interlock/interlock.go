@@ -23,7 +23,7 @@ func New() *Interlock {
 }
 
 func (il *Interlock) OpenBudget() time.Duration {
-	return 3 * time.Second
+	return door.DefaultOpenTimeout
 }
 
 func (il *Interlock) CloseBudget() time.Duration {
