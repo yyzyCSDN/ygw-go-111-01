@@ -304,10 +304,11 @@ func (d *Door) OnlineCheck(last time.Time, now time.Time) bool {
 }
 
 func CloseBatch(ctx context.Context, doors []*Door, act Actuator, sampler TrapSampler, rel GrantReleaser, obs Observer, rec Recorder, timeout time.Duration) []error {
+	var errs []error
 	for _, d := range doors {
 		if err := d.Close(ctx, act, sampler, rel, obs, rec, timeout); err != nil {
-			return []error{err}
+			errs = append(errs, err)
 		}
 	}
-	return nil
+	return errs
 }

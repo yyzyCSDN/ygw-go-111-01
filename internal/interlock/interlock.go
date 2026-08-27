@@ -79,6 +79,7 @@ func (il *Interlock) ReleaseDoor(doorID string) {
 	il.mu.Lock()
 	defer il.mu.Unlock()
 	delete(il.grants, doorID)
+	delete(il.outstanding, doorID)
 }
 
 func (il *Interlock) BeginChain() {
